@@ -5,6 +5,7 @@ namespace mattvb91\LightModel\Tests;
 use mattvb91\LightModel\LightModel;
 use mattvb91\LightModel\Tests\TestModels\User;
 use mattvb91\LightModel\Tests\TestModels\UserTableNameSet;
+use PDO;
 use PHPUnit\Framework\TestCase;
 
 require_once(__DIR__ . '/../vendor/autoload.php');
@@ -23,7 +24,7 @@ class ModelTest extends TestCase
      */
     public function testB()
     {
-        LightModel::init(new \PDO('mysql:host=localhost;dbname=test', 'root', 'root'));
+        LightModel::init(new PDO('mysql:host=127.0.0.1;dbname=test', 'root', ''));
         self::assertNotNull(LightModel::getConnection());
     }
 

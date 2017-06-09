@@ -1,0 +1,25 @@
+{
+    "name": "mattvb91/lightmodel",
+    "description": "Lightweight DB model",
+    "type": "package",
+    "require-dev": {
+        "phpunit/phpunit": "^6.2"
+    },
+    "authors": [
+        {
+            "name": "Matthias von Bargen",
+            "email": "matt@mavon.ie"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "psr-4" : {
+            "mattvb91\\LightModel\\" : "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4" : {
+            "mattvb91\\LightModel\\Tests\\" : "tests/"
+        }
+    }
+}

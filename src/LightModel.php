@@ -9,7 +9,7 @@ use PDO;
  * Class LightModel
  * @package mattvb91\LightModel
  */
-class LightModel
+abstract class LightModel
 {
 
     /**
@@ -28,6 +28,14 @@ class LightModel
      * @var String
      */
     protected $tableName;
+
+    /**
+     * Maps DB Columns (keys) to the associated values.
+     * [ db_column => value ]
+     *
+     * @return array
+     */
+    abstract public function getValues();
 
 
     /**
@@ -219,5 +227,68 @@ class LightModel
                 $this->$var = $val;
             }
         }
+    }
+
+
+    /**
+     * Save the current item.
+     *
+     * @return bool
+     */
+    public function save()
+    {
+        $values = $this->getValues();
+
+        if ($this->exists())
+        {
+            $setString = '';
+            foreach ($values as $key => $value)
+            {
+                $setString .= '`' . $key . '`=:' . $key;
+
+                unset($values[$key]);
+                $values[':' . $key] = $value;
+            }
+
+            $keyParam = ':' . $this->getKeyName();
+            $values[$keyParam] = $this->getKey();
+
+            $sql = 'UPDATE `' . $this->getTableName() . '` SET ' . $setString . ' WHERE `' . $this->getKeyName() . '` = ' . $keyParam . ';';
+        } else
+        {
+            $bindings = [
+                'columns' => '',
+                'values'  => '',
+            ];
+
+            foreach ($values as $key => $value)
+            {
+                $bindings['columns'] .= '`' . $key . '`';
+                $bindings['values'] .= ':' . $key . '';
+
+                //Update the values
+                unset($values[$key]);
+                $values[':' . $key] = $value;
+
+                if (! end($values))
+                {
+                    $bindings['columns'] .= ',';
+                    $bindings['values'] .= ',';
+                }
+            }
+
+            $sql = 'INSERT INTO `' . $this->getTableName() . '` (' . $bindings['columns'] . ') VALUES (' . $bindings['values'] . ');';
+        }
+
+        $query = self::getConnection()->prepare($sql);
+        $res = $query->execute($values);
+
+        //If this was inserted successfully update the id
+        if (! $this->exists() && $res)
+        {
+            $this->setKey(self::getConnection()->lastInsertId());
+        }
+
+        return $res;
     }
 }

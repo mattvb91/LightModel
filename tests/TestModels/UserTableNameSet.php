@@ -9,5 +9,17 @@ use mattvb91\LightModel\LightModel;
  */
 class UserTableNameSet extends LightModel
 {
+
     protected $tableName = 'User';
+
+    /**
+     * Maps DB Columns (keys) to the associated values.
+     * [ db_column => value ]
+     *
+     * @return array
+     */
+    public function getValues()
+    {
+        return [];
+    }
 }

@@ -2,6 +2,7 @@
     "name": "mattvb91/lightmodel",
     "description": "Lightweight DB model",
     "type": "package",
+    "license": "MIT",
     "require-dev": {
         "phpunit/phpunit": "^6.2"
     },

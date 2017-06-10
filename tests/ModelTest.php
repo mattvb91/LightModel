@@ -32,7 +32,7 @@ class ModelTest extends TestCase
         $user = new User();
         $userTableSet = new UserTableNameSet();
 
-        $this->assertEquals('User', $user->getTableName());
+        $this->assertEquals('user', $user->getTableName());
         $this->assertEquals('User', $userTableSet->getTableName());
     }
 
@@ -75,5 +75,31 @@ class ModelTest extends TestCase
 
         $user->refresh();
         $this->assertEquals($user->username, $actual);
+    }
+
+    /**
+     * Test the save method
+     */
+    public function testSave()
+    {
+        $user = new User();
+        $user->username = time();
+
+        //Test insert
+        $this->assertTrue($user->save());
+        $this->assertTrue($user->exists());
+        $this->assertNotNull($user->getKey());
+
+        $key = $user->getKey();
+
+        //Test update
+        $updatedName = time() . ' updated';
+
+        $user->username = $updatedName;
+        $this->assertTrue($user->save());
+
+        $user->refresh();
+
+        $this->assertEquals($user, User::getOneByKey($key));
     }
 }

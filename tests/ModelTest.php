@@ -24,8 +24,11 @@ class ModelTest extends TestCase
      */
     public function testB()
     {
-        LightModel::init(new PDO('mysql:host=127.0.0.1;dbname=test', 'root', ''));
+        LightModel::init(new PDO('mysql:host=localhost;dbname=test', 'root', ''));
+        LightModel::getConnection()->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
         self::assertNotNull(LightModel::getConnection());
+        self::assertNotFalse(LightModel::getConnection());
     }
 
     public function testClassNameUsedForTableName()
@@ -34,7 +37,7 @@ class ModelTest extends TestCase
         $userTableSet = new UserTableNameSet();
 
         $this->assertEquals('user', $user->getTableName());
-        $this->assertEquals('User', $userTableSet->getTableName());
+        $this->assertEquals('user', $userTableSet->getTableName());
     }
 
     public function testGetByKey()

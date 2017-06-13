@@ -1,13 +1,17 @@
 language: php
 
+php:
+  - '7.0'
+  - '7.1'
+
 services:
   - mysql
 
+env:
+  - DB=mysql
+
+before_install:
+
 before_script:
-  - mysql -u root -e 'CREATE DATABASE test;'
-  - mysql -u root - 'CREATE TABLE `test`.`user` (
-                       `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-                       `username` VARCHAR(45) NOT NULL,
-                       PRIMARY KEY (`id`),
-                       UNIQUE INDEX `id_UNIQUE` (`id` ASC),
-                       UNIQUE INDEX `username_UNIQUE` (`username` ASC));'
+  - mysql < $TRAVIS_BUILD_DIR/tests/scripts/dump.sql
+  - composer install

@@ -40,10 +40,10 @@ abstract class LightModel
 
 
     /**
-     * @param $pdo
+     * @param PDO $pdo
      * @param array $options
      */
-    public static function init($pdo, $options = [])
+    public static function init(PDO $pdo, $options = [])
     {
         self::$connection = $pdo;
     }

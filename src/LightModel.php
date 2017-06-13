@@ -3,6 +3,7 @@
 
 namespace mattvb91\LightModel;
 
+use Exception;
 use PDO;
 
 /**
@@ -49,13 +50,13 @@ abstract class LightModel
 
     /**
      * @return PDO
-     * @throws \Exception
+     * @throws Exception
      */
     public static function getConnection()
     {
         if (! isset(self::$connection))
         {
-            throw new \Exception('LightModel::init() not called');
+            throw new Exception('LightModel::init() not called');
         }
 
         return self::$connection;

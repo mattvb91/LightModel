@@ -1,0 +1,17 @@
+language: php
+
+php:
+  - '7.0'
+  - '7.1'
+
+services:
+  - mysql
+
+env:
+  - DB=mysql
+
+before_install:
+
+before_script:
+  - mysql < $TRAVIS_BUILD_DIR/tests/scripts/dump.sql
+  - composer install

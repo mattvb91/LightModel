@@ -10,7 +10,7 @@ use mattvb91\LightModel\LightModel;
 class UserTableNameSet extends LightModel
 {
 
-    protected $tableName = 'User';
+    protected $tableName = 'user';
 
     /**
      * Maps DB Columns (keys) to the associated values.

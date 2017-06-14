@@ -295,4 +295,22 @@ abstract class LightModel
 
         return $res;
     }
+
+    /**
+     * Delete a model from the DB
+     *
+     * @return bool
+     */
+    public function delete()
+    {
+        if (! $this->exists())
+        {
+            return false;
+        }
+
+        $sql = 'DELETE FROM ' . $this->getTableName() . ' WHERE ' . $this->getKeyName() . ' = :key';
+        $query = self::getConnection()->prepare($sql);
+
+        return $query->execute(['key' => $this->getKey()]);
+    }
 }

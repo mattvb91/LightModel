@@ -165,4 +165,23 @@ class ModelTest extends TestCase
         $this->assertEquals($event, $eventDB);
         $this->assertEquals($values, $eventDB->getValues());
     }
+
+    /**
+     * Test deleting a model
+     */
+    public function testDelete()
+    {
+        $user = User::getOneByKey(1);
+        $this->assertTrue($user->delete());
+        $this->assertFalse($user->exists());
+        $this->assertNull(User::getOneByKey(1));
+
+        $eventDB = Event::getOneByKey('new key');
+        $this->assertTrue($eventDB->delete());
+        $this->assertFalse($eventDB->exists());
+        $this->assertNull(User::getOneByKey('new key'));
+
+        $newEvent = new Event();
+        $this->assertFalse($newEvent->delete());
+    }
 }

@@ -62,7 +62,7 @@ use mattvb91\LightModel\LightModel;
 
 class User extends LightModel
 {
-    $username;
+    public $username;
     
     public function getValues()
     {
@@ -74,7 +74,8 @@ class User extends LightModel
 
 ```
 
-You do not need to manually bind the primary key column as it is done automatically. 
+You do not need to manually bind the primary key column if it is set up as an auto increment
+value in your DB. 
 
 You can of course use your normal getters to access your column values too inside the 
 ```getValues()``` method as long as you bind it to your correct column.
@@ -121,4 +122,12 @@ Keep in mind this will set your model back to whats currently in your DB.
 
 ```php
 $user->refresh();
+```
+
+### Delete a model
+
+To delete a model simply call the ```delete()``` method:
+
+```php
+$user->delete();
 ```

@@ -114,10 +114,9 @@ abstract class LightModel
         $class = new $className;
         $tableKey = $class->getKeyName();
 
-        $sql = 'SELECT * FROM ' . $class->getTableName() . ' WHERE ' . $tableKey . ' = ' . $key;
-        $query = self::getConnection()->query($sql);
-
-        $query->execute();
+        $sql = 'SELECT * FROM ' . $class->getTableName() . ' WHERE ' . $tableKey . ' = :key';
+        $query = self::getConnection()->prepare($sql);
+        $query->execute(['key' => $key]);
 
         if ($res = $query->fetchObject($className))
         {
@@ -180,10 +179,7 @@ abstract class LightModel
      */
     public function exists()
     {
-        /* @var $class LightModel */
-        $className = get_called_class();
-        $class = new $className;
-        $tableKey = $class->getKeyName();
+        $tableKey = $this->getKeyName();
 
         //If key isn't set we cant associate this record with DB
         if (! isset($this->$tableKey))
@@ -191,8 +187,9 @@ abstract class LightModel
             return false;
         }
 
-        $sql = 'SELECT EXISTS(SELECT * FROM user WHERE ' . $tableKey . ' = ' . $this->getKey() . ' LIMIT 1)';
-        $query = self::getConnection()->query($sql);
+        $sql = 'SELECT EXISTS(SELECT ' . $tableKey . ' FROM ' . $this->getTableName() . ' WHERE ' . $this->getKeyName() . ' = :key LIMIT 1)';
+        $query = self::getConnection()->prepare($sql);
+        $query->execute(['key' => $this->getKey()]);
 
         return boolval($query->fetchColumn(0));
     }
@@ -239,6 +236,7 @@ abstract class LightModel
     public function save()
     {
         $values = $this->getValues();
+        $keys = array_keys($values);
 
         if ($this->exists())
         {
@@ -246,6 +244,11 @@ abstract class LightModel
             foreach ($values as $key => $value)
             {
                 $setString .= '`' . $key . '`=:' . $key;
+
+                if (end($keys) !== $key)
+                {
+                    $setString .= ',';
+                }
 
                 unset($values[$key]);
                 $values[':' . $key] = $value;
@@ -267,15 +270,15 @@ abstract class LightModel
                 $bindings['columns'] .= '`' . $key . '`';
                 $bindings['values'] .= ':' . $key . '';
 
-                //Update the values
-                unset($values[$key]);
-                $values[':' . $key] = $value;
-
-                if (! end($values))
+                if (end($keys) !== $key)
                 {
                     $bindings['columns'] .= ',';
                     $bindings['values'] .= ',';
                 }
+
+                //Update the values
+                unset($values[$key]);
+                $values[':' . $key] = $value;
             }
 
             $sql = 'INSERT INTO `' . $this->getTableName() . '` (' . $bindings['columns'] . ') VALUES (' . $bindings['values'] . ');';

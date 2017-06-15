@@ -365,7 +365,7 @@ abstract class LightModel
      */
     private function describeTable()
     {
-        if (!isset(self::$tableColumns[$this->getTableName()]))
+        if (! isset(self::$tableColumns[$this->getTableName()]))
         {
             $sql = 'DESCRIBE ' . $this->getTableName();
             $query = self::getConnection()->prepare($sql);
@@ -376,5 +376,31 @@ abstract class LightModel
                 self::$tableColumns[$this->getTableName()][$values['Field']] = $values['Type'];
             }
         }
+    }
+
+    private $_belongsTo = [];
+    private $_hasMany = [];
+
+    /**
+     * Load the specified belongsTo relation model.
+     *
+     * @param $class
+     * @param $foreignKey
+     * @return LightModel
+     * @throws Exception
+     */
+    protected function belongsTo($class, $foreignKey)
+    {
+        if (! property_exists($this, $foreignKey))
+        {
+            throw new Exception($class . ' does not have attribute: ' . $foreignKey);
+        }
+
+        if (! isset($this->_belongsTo[$class]))
+        {
+            $this->_belongsTo[$class] = $class::getOneByKey($this->$foreignKey);
+        }
+
+        return $this->_belongsTo[$class];
     }
 }

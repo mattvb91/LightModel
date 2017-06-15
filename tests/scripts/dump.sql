@@ -21,5 +21,18 @@ CREATE TABLE `event` (
   PRIMARY KEY (`event_id`),
   UNIQUE INDEX `event_id_UNIQUE` (`event_id` ASC));
 
+CREATE TABLE `books` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(45) NOT NULL,
+  `user_id` INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `id_UNIQUE` (`id` ASC),
+  INDEX `fk_books_user_idx` (`user_id` ASC),
+  CONSTRAINT `fk_books_user`
+  FOREIGN KEY (`user_id`)
+  REFERENCES `user` (`id`)
+    ON DELETE CASCADE
+    ON UPDATE NO ACTION);
+
 INSERT INTO `user` (`id`, `username`) VALUES ('1', 'Test User');
 INSERT INTO `event` (`event_id`, `name`, `date`, `description`) VALUES ('test_event', 'Test Event', '2000-01-01 20:00:01', 'This is a test description');

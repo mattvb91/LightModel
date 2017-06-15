@@ -3,6 +3,7 @@
 namespace mattvb91\LightModel\Tests;
 
 use mattvb91\LightModel\LightModel;
+use mattvb91\LightModel\Tests\TestModels\Book;
 use mattvb91\LightModel\Tests\TestModels\Event;
 use mattvb91\LightModel\Tests\TestModels\User;
 use mattvb91\LightModel\Tests\TestModels\UserTableName;
@@ -245,5 +246,27 @@ class ModelTest extends TestCase
         ];
 
         $this->assertAttributeEquals($tableDescribe, "tableColumns", $event);
+    }
+
+    /**
+     * Test foreign relationships.
+     */
+    public function testBelongsToRelationship()
+    {
+        LightModel::init(self::$pdo, [LightModel::OPTIONS_TYPECAST]);
+
+        $user = new User();
+        $user->username = uniqid('username');
+        $user->save();
+
+        $book = new Book();
+        $book->name = 'New book';
+        $book->user_id = $user->getKey();
+        $book->save();
+
+        $this->assertInstanceOf(User::class, $book->user());
+
+        $this->expectExceptionMessage('mattvb91\LightModel\Tests\TestModels\User does not have attribute: wrong');
+        $book->wrongForeignKey();
     }
 }

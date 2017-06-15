@@ -143,3 +143,23 @@ To delete a model simply call the ```delete()``` method:
 ```php
 $user->delete();
 ```
+
+## Relationships
+
+### BelongsTo
+
+To define a Belongs to relationship use the ```belongsTo($class, $foreignKey)``` method in your model.
+For example if our User is associated with a Department you could do the following
+inside your User class.
+
+Once a relationship has been queried once any further accesses to not hit the database again.
+
+```php
+
+public function department() 
+{
+    return $this->belongsTo(Department::class, 'department_id');
+    //returns a loaded Department::class instance
+}
+
+```

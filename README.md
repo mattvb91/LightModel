@@ -26,6 +26,18 @@ LightModel::init($pdo);
      
 ```
 
+You can also pass in an optional array for further configuration. For example:
+
+```php
+$options = [
+    LightModel::LightModel::OPTIONS_TYPECAST,
+];
+
+LightModel::init($pdo, $options);
+```
+Currently the typecast option is the only option available. If used this will typecast Integer columns
+defined in your MySQL database to be an integer attribute on your model.
+
 
 To get started with a model, your class needs to extend ```mattvb91\LightModel\LightModel```
 

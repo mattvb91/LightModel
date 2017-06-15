@@ -14,6 +14,14 @@ require_once(__DIR__ . '/../vendor/autoload.php');
 class ModelTest extends TestCase
 {
 
+    private static $pdo;
+
+    protected function setUp()
+    {
+        parent::setUp();
+        self::$pdo = new PDO('mysql:host=localhost;dbname=test', 'root', '');
+    }
+
     public function testA()
     {
         $this->expectExceptionMessage('LightModel::init() not called');
@@ -25,7 +33,7 @@ class ModelTest extends TestCase
      */
     public function testB()
     {
-        LightModel::init(new PDO('mysql:host=localhost;dbname=test', 'root', ''));
+        LightModel::init(self::$pdo);
         LightModel::getConnection()->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
         self::assertNotNull(LightModel::getConnection());
@@ -183,5 +191,59 @@ class ModelTest extends TestCase
 
         $newEvent = new Event();
         $this->assertFalse($newEvent->delete());
+    }
+
+    /**
+     * Test typecasting works correctly
+     */
+    public function testTypeCast()
+    {
+        $user = new User();
+        $user->username = uniqid('username');
+        $user->save();
+
+        $user = User::getOneByKey($user->getKey());
+        $type = gettype($user->getKey());
+        $this->assertEquals('string', $type);
+
+        //Init LightModel with TypeCast option
+        LightModel::init(self::$pdo, [LightModel::OPTIONS_TYPECAST]);
+
+        $user = User::getOneByKey($user->getKey());
+        $type = gettype($user->getKey());
+        $this->assertEquals('integer', $type);
+
+        $user->refresh();
+        $type = gettype($user->getKey());
+        $this->assertEquals('integer', $type);
+    }
+
+    /**
+     * Test describe table works correctly
+     */
+    public function testDescribeTable()
+    {
+        LightModel::init(self::$pdo, [LightModel::OPTIONS_TYPECAST]);
+
+        //Run getItems just to populate $tableColumns
+        User::getItems();
+        Event::getItems();
+
+        $event = new Event();
+
+        $tableDescribe = [
+            'user'  => [
+                'id'       => 'int(10) unsigned',
+                'username' => 'varchar(45)',
+            ],
+            'event' => [
+                'event_id'    => 'varchar(45)',
+                'name'        => 'varchar(45)',
+                'date'        => 'datetime',
+                'description' => 'text',
+            ],
+        ];
+
+        $this->assertAttributeEquals($tableDescribe, "tableColumns", $event);
     }
 }

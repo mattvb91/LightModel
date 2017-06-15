@@ -31,6 +31,47 @@ abstract class LightModel
     protected $tableName;
 
     /**
+     * This is used for proper typecasting of columns.
+     *
+     * @var array
+     */
+    private static $tableColumns = [];
+
+    /**
+     * @var array
+     */
+    private static $initOptions = [];
+
+    /**
+     * Typecast the models columns to the associated mysql data types.
+     *
+     * @param LightModel $model
+     * @return LightModel
+     *
+     * TODO implement typecasting to other types
+     */
+    private static function typeCastModel(LightModel $model)
+    {
+        if (in_array(self::OPTIONS_TYPECAST, self::$initOptions))
+        {
+            $model->describeTable();
+
+            foreach (self::$tableColumns[$model->getTableName()] as $column => $type)
+            {
+                if (in_array($column, get_object_vars($model)))
+                {
+                    if (strpos($type, 'int') !== false)
+                    {
+                        settype($model->$column, 'int');
+                    }
+                }
+            }
+        }
+
+        return $model;
+    }
+
+    /**
      * Maps DB Columns (keys) to the associated values.
      * [ db_column => value ]
      *
@@ -39,6 +80,9 @@ abstract class LightModel
     abstract public function getValues();
 
 
+    //Typecast model attributes to mysql data types
+    const OPTIONS_TYPECAST = 1;
+
     /**
      * @param PDO $pdo
      * @param array $options
@@ -46,6 +90,7 @@ abstract class LightModel
     public static function init(PDO $pdo, $options = [])
     {
         self::$connection = $pdo;
+        self::$initOptions = $options;
     }
 
     /**
@@ -120,7 +165,7 @@ abstract class LightModel
 
         if ($res = $query->fetchObject($className))
         {
-            return $res;
+            return self::typeCastModel($res);
         }
 
         return null;
@@ -145,7 +190,7 @@ abstract class LightModel
 
         foreach ($query->fetchAll(PDO::FETCH_CLASS, $className) as $item)
         {
-            $res[] = $item;
+            $res[] = self::typeCastModel($item);
         }
 
         return $res;
@@ -312,5 +357,24 @@ abstract class LightModel
         $query = self::getConnection()->prepare($sql);
 
         return $query->execute(['key' => $this->getKey()]);
+    }
+
+    /**
+     * Describe the associated table columns and set up our
+     * $tableColumns
+     */
+    private function describeTable()
+    {
+        if (!isset(self::$tableColumns[$this->getTableName()]))
+        {
+            $sql = 'DESCRIBE ' . $this->getTableName();
+            $query = self::getConnection()->prepare($sql);
+            $query->execute();
+
+            foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $values)
+            {
+                self::$tableColumns[$this->getTableName()][$values['Field']] = $values['Type'];
+            }
+        }
     }
 }

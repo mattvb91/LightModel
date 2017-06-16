@@ -31,6 +31,47 @@ abstract class LightModel
     protected $tableName;
 
     /**
+     * This is used for proper typecasting of columns.
+     *
+     * @var array
+     */
+    private static $tableColumns = [];
+
+    /**
+     * @var array
+     */
+    private static $initOptions = [];
+
+    /**
+     * Typecast the models columns to the associated mysql data types.
+     *
+     * @param LightModel $model
+     * @return LightModel
+     *
+     * TODO implement typecasting to other types
+     */
+    private static function typeCastModel(LightModel $model)
+    {
+        if (in_array(self::OPTIONS_TYPECAST, self::$initOptions))
+        {
+            $model->describeTable();
+
+            foreach (self::$tableColumns[$model->getTableName()] as $column => $type)
+            {
+                if (in_array($column, get_object_vars($model)))
+                {
+                    if (strpos($type, 'int') !== false)
+                    {
+                        settype($model->$column, 'int');
+                    }
+                }
+            }
+        }
+
+        return $model;
+    }
+
+    /**
      * Maps DB Columns (keys) to the associated values.
      * [ db_column => value ]
      *
@@ -39,6 +80,9 @@ abstract class LightModel
     abstract public function getValues();
 
 
+    //Typecast model attributes to mysql data types
+    const OPTIONS_TYPECAST = 1;
+
     /**
      * @param PDO $pdo
      * @param array $options
@@ -46,6 +90,7 @@ abstract class LightModel
     public static function init(PDO $pdo, $options = [])
     {
         self::$connection = $pdo;
+        self::$initOptions = $options;
     }
 
     /**
@@ -114,14 +159,13 @@ abstract class LightModel
         $class = new $className;
         $tableKey = $class->getKeyName();
 
-        $sql = 'SELECT * FROM ' . $class->getTableName() . ' WHERE ' . $tableKey . ' = ' . $key;
-        $query = self::getConnection()->query($sql);
-
-        $query->execute();
+        $sql = 'SELECT * FROM ' . $class->getTableName() . ' WHERE ' . $tableKey . ' = :key';
+        $query = self::getConnection()->prepare($sql);
+        $query->execute(['key' => $key]);
 
         if ($res = $query->fetchObject($className))
         {
-            return $res;
+            return self::typeCastModel($res);
         }
 
         return null;
@@ -146,7 +190,7 @@ abstract class LightModel
 
         foreach ($query->fetchAll(PDO::FETCH_CLASS, $className) as $item)
         {
-            $res[] = $item;
+            $res[] = self::typeCastModel($item);
         }
 
         return $res;
@@ -180,10 +224,7 @@ abstract class LightModel
      */
     public function exists()
     {
-        /* @var $class LightModel */
-        $className = get_called_class();
-        $class = new $className;
-        $tableKey = $class->getKeyName();
+        $tableKey = $this->getKeyName();
 
         //If key isn't set we cant associate this record with DB
         if (! isset($this->$tableKey))
@@ -191,8 +232,9 @@ abstract class LightModel
             return false;
         }
 
-        $sql = 'SELECT EXISTS(SELECT * FROM user WHERE ' . $tableKey . ' = ' . $this->getKey() . ' LIMIT 1)';
-        $query = self::getConnection()->query($sql);
+        $sql = 'SELECT EXISTS(SELECT ' . $tableKey . ' FROM ' . $this->getTableName() . ' WHERE ' . $this->getKeyName() . ' = :key LIMIT 1)';
+        $query = self::getConnection()->prepare($sql);
+        $query->execute(['key' => $this->getKey()]);
 
         return boolval($query->fetchColumn(0));
     }
@@ -239,6 +281,7 @@ abstract class LightModel
     public function save()
     {
         $values = $this->getValues();
+        $keys = array_keys($values);
 
         if ($this->exists())
         {
@@ -246,6 +289,11 @@ abstract class LightModel
             foreach ($values as $key => $value)
             {
                 $setString .= '`' . $key . '`=:' . $key;
+
+                if (end($keys) !== $key)
+                {
+                    $setString .= ',';
+                }
 
                 unset($values[$key]);
                 $values[':' . $key] = $value;
@@ -267,15 +315,15 @@ abstract class LightModel
                 $bindings['columns'] .= '`' . $key . '`';
                 $bindings['values'] .= ':' . $key . '';
 
-                //Update the values
-                unset($values[$key]);
-                $values[':' . $key] = $value;
-
-                if (! end($values))
+                if (end($keys) !== $key)
                 {
                     $bindings['columns'] .= ',';
                     $bindings['values'] .= ',';
                 }
+
+                //Update the values
+                unset($values[$key]);
+                $values[':' . $key] = $value;
             }
 
             $sql = 'INSERT INTO `' . $this->getTableName() . '` (' . $bindings['columns'] . ') VALUES (' . $bindings['values'] . ');';
@@ -291,5 +339,68 @@ abstract class LightModel
         }
 
         return $res;
+    }
+
+    /**
+     * Delete a model from the DB
+     *
+     * @return bool
+     */
+    public function delete()
+    {
+        if (! $this->exists())
+        {
+            return false;
+        }
+
+        $sql = 'DELETE FROM ' . $this->getTableName() . ' WHERE ' . $this->getKeyName() . ' = :key';
+        $query = self::getConnection()->prepare($sql);
+
+        return $query->execute(['key' => $this->getKey()]);
+    }
+
+    /**
+     * Describe the associated table columns and set up our
+     * $tableColumns
+     */
+    private function describeTable()
+    {
+        if (! isset(self::$tableColumns[$this->getTableName()]))
+        {
+            $sql = 'DESCRIBE ' . $this->getTableName();
+            $query = self::getConnection()->prepare($sql);
+            $query->execute();
+
+            foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $values)
+            {
+                self::$tableColumns[$this->getTableName()][$values['Field']] = $values['Type'];
+            }
+        }
+    }
+
+    private $_belongsTo = [];
+    private $_hasMany = [];
+
+    /**
+     * Load the specified belongsTo relation model.
+     *
+     * @param $class
+     * @param $foreignKey
+     * @return LightModel
+     * @throws Exception
+     */
+    protected function belongsTo($class, $foreignKey)
+    {
+        if (! property_exists($this, $foreignKey))
+        {
+            throw new Exception($class . ' does not have attribute: ' . $foreignKey);
+        }
+
+        if (! isset($this->_belongsTo[$class]))
+        {
+            $this->_belongsTo[$class] = $class::getOneByKey($this->$foreignKey);
+        }
+
+        return $this->_belongsTo[$class];
     }
 }

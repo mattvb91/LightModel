@@ -26,6 +26,18 @@ LightModel::init($pdo);
      
 ```
 
+You can also pass in an optional array for further configuration. For example:
+
+```php
+$options = [
+    LightModel::LightModel::OPTIONS_TYPECAST,
+];
+
+LightModel::init($pdo, $options);
+```
+Currently the typecast option is the only option available. If used this will typecast Integer columns
+defined in your MySQL database to be an integer attribute on your model.
+
 
 To get started with a model, your class needs to extend ```mattvb91\LightModel\LightModel```
 
@@ -62,7 +74,7 @@ use mattvb91\LightModel\LightModel;
 
 class User extends LightModel
 {
-    $username;
+    public $username;
     
     public function getValues()
     {
@@ -74,7 +86,8 @@ class User extends LightModel
 
 ```
 
-You do not need to manually bind the primary key column as it is done automatically. 
+You do not need to manually bind the primary key column if it is set up as an auto increment
+value in your DB. 
 
 You can of course use your normal getters to access your column values too inside the 
 ```getValues()``` method as long as you bind it to your correct column.
@@ -121,4 +134,32 @@ Keep in mind this will set your model back to whats currently in your DB.
 
 ```php
 $user->refresh();
+```
+
+### Delete a model
+
+To delete a model simply call the ```delete()``` method:
+
+```php
+$user->delete();
+```
+
+## Relationships
+
+### BelongsTo
+
+To define a Belongs to relationship use the ```belongsTo($class, $foreignKey)``` method in your model.
+For example if our User is associated with a Department you could do the following
+inside your User class.
+
+Once a relationship has been queried once any further accesses to not hit the database again.
+
+```php
+
+public function department() 
+{
+    return $this->belongsTo(Department::class, 'department_id');
+    //returns a loaded Department::class instance
+}
+
 ```

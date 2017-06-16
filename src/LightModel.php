@@ -280,65 +280,68 @@ abstract class LightModel
      */
     public function save()
     {
-        $values = $this->getValues();
-        $keys = array_keys($values);
-
         if ($this->exists())
         {
-            $setString = '';
-            foreach ($values as $key => $value)
-            {
-                $setString .= '`' . $key . '`=:' . $key;
-
-                if (end($keys) !== $key)
-                {
-                    $setString .= ',';
-                }
-
-                unset($values[$key]);
-                $values[':' . $key] = $value;
-            }
-
-            $keyParam = ':' . $this->getKeyName();
-            $values[$keyParam] = $this->getKey();
-
-            $sql = 'UPDATE `' . $this->getTableName() . '` SET ' . $setString . ' WHERE `' . $this->getKeyName() . '` = ' . $keyParam . ';';
-        } else
-        {
-            $bindings = [
-                'columns' => '',
-                'values'  => '',
-            ];
-
-            foreach ($values as $key => $value)
-            {
-                $bindings['columns'] .= '`' . $key . '`';
-                $bindings['values'] .= ':' . $key . '';
-
-                if (end($keys) !== $key)
-                {
-                    $bindings['columns'] .= ',';
-                    $bindings['values'] .= ',';
-                }
-
-                //Update the values
-                unset($values[$key]);
-                $values[':' . $key] = $value;
-            }
-
-            $sql = 'INSERT INTO `' . $this->getTableName() . '` (' . $bindings['columns'] . ') VALUES (' . $bindings['values'] . ');';
+            return $this->update();
         }
 
+        return $this->insert();
+    }
+
+
+    /**
+     * @return bool
+     */
+    private function insert()
+    {
+        $columns = [];
+        $values = $this->getValues();
+
+        foreach ($values as $key => $value)
+        {
+            $columns[] = '`' . $key . '`';
+
+            //Update the values
+            unset($values[$key]);
+            $values[':' . $key] = $value;
+        }
+
+        $sql = 'INSERT INTO `' . $this->getTableName() . '` (' . implode(',', $columns) . ') VALUES (' . implode(',', array_keys($values)) . ');';
         $query = self::getConnection()->prepare($sql);
         $res = $query->execute($values);
 
         //If this was inserted successfully update the id
-        if (! $this->exists() && $res)
+        if ($res && $lastInsertId = self::getConnection()->lastInsertId())
         {
-            $this->setKey(self::getConnection()->lastInsertId());
+            $this->setKey($lastInsertId);
         }
 
         return $res;
+    }
+
+    /**
+     * @return bool
+     */
+    private function update()
+    {
+        $values = $this->getValues();
+        $bindings = [];
+
+        foreach ($values as $key => $value)
+        {
+            $bindings[] = '`' . $key . '`=:' . $key;
+
+            unset($values[$key]);
+            $values[':' . $key] = $value;
+        }
+
+        $keyParam = ':' . $this->getKeyName();
+        $values[$keyParam] = $this->getKey();
+
+        $sql = 'UPDATE `' . $this->getTableName() . '` SET ' . implode(',', $bindings) . ' WHERE `' . $this->getKeyName() . '` = ' . $keyParam . ';';
+        $query = self::getConnection()->prepare($sql);
+
+        return $query->execute($values);
     }
 
     /**

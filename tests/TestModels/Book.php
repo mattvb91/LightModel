@@ -19,7 +19,7 @@ class Book extends LightModel
      *
      * @return array
      */
-    public function getValues()
+    public function getValues(): array
     {
         return [
             'name'    => $this->name,

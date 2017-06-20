@@ -2,6 +2,8 @@
 
 namespace mattvb91\LightModel\Tests;
 
+use mattvb91\LightModel\DB\DB;
+use mattvb91\LightModel\Exceptions\TableColumnMissing;
 use mattvb91\LightModel\LightModel;
 use mattvb91\LightModel\Tests\TestModels\Book;
 use mattvb91\LightModel\Tests\TestModels\Event;
@@ -26,7 +28,7 @@ class ModelTest extends TestCase
     public function testA()
     {
         $this->expectExceptionMessage('LightModel::init() not called');
-        LightModel::getConnection();
+        DB::getConnection();
     }
 
     /**
@@ -35,10 +37,10 @@ class ModelTest extends TestCase
     public function testB()
     {
         LightModel::init(self::$pdo);
-        LightModel::getConnection()->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        DB::getConnection()->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        self::assertNotNull(LightModel::getConnection());
-        self::assertNotFalse(LightModel::getConnection());
+        self::assertNotNull(DB::getConnection());
+        self::assertNotFalse(DB::getConnection());
     }
 
     /**
@@ -219,41 +221,12 @@ class ModelTest extends TestCase
         $this->assertEquals('integer', $type);
     }
 
-    /**
-     * Test describe table works correctly
-     */
-    public function testDescribeTable()
-    {
-        LightModel::init(self::$pdo, [LightModel::OPTIONS_TYPECAST]);
-
-        //Run getItems just to populate $tableColumns
-        User::getItems();
-        Event::getItems();
-
-        $event = new Event();
-
-        $tableDescribe = [
-            'user'  => [
-                'id'       => 'int(10) unsigned',
-                'username' => 'varchar(45)',
-            ],
-            'event' => [
-                'event_id'    => 'varchar(45)',
-                'name'        => 'varchar(45)',
-                'date'        => 'datetime',
-                'description' => 'text',
-            ],
-        ];
-
-        $this->assertAttributeEquals($tableDescribe, "tableColumns", $event);
-    }
 
     /**
      * Test foreign relationships.
      */
     public function testBelongsToRelationship()
     {
-        LightModel::init(self::$pdo, [LightModel::OPTIONS_TYPECAST]);
 
         $user = new User();
         $user->username = uniqid('username');
@@ -266,7 +239,65 @@ class ModelTest extends TestCase
 
         $this->assertInstanceOf(User::class, $book->user());
 
-        $this->expectExceptionMessage('mattvb91\LightModel\Tests\TestModels\User does not have attribute: wrong');
+        $this->expectException(TableColumnMissing::class);
+        $this->expectExceptionMessage('books does not have column: wrong');
         $book->wrongForeignKey();
+    }
+
+
+    /**
+     * Test Filters
+     */
+    public function testFilters()
+    {
+        LightModel::init(self::$pdo, [LightModel::OPTIONS_TYPECAST]);
+
+        for ($i = 0; $i <= 5; $i++)
+        {
+            $user = new User();
+            $user->username = uniqid('username');
+            $user->save();
+        }
+
+        $user = new User();
+        $user->username = 123;
+        $user->save();
+
+        $user = new User();
+        $user->username = 200;
+        $user->save();
+
+        $user = new User();
+        $user->username = 300;
+        $user->save();
+
+        $users = User::getItems(['username' => 123]);
+        $this->assertEquals(count($users), User::count(['username' => 123]));
+
+        $this->assertEquals(1, count(User::getItems(['username' => 123])));
+
+        $this->assertGreaterThan(1, count(User::getItems(['username' => ['>=', 12]])));
+    }
+
+    public function testHasMany()
+    {
+        LightModel::init(self::$pdo, [LightModel::OPTIONS_TYPECAST]);
+
+        $user = new User();
+        $user->username = uniqid('username');
+        $user->save();
+
+        $book = new Book();
+        $book->name = 'New book';
+        $book->user_id = $user->getKey();
+        $book->save();
+
+        $book2 = new Book();
+        $book2->name = 'New book2';
+        $book2->user_id = $user->getKey();
+        $book2->save();
+
+        $this->assertNotEmpty($user->books());
+        $this->assertEquals(2, count($user->books()));
     }
 }

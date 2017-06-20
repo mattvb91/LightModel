@@ -16,7 +16,7 @@ class UserTableName extends LightModel
      *
      * @return array
      */
-    public function getValues()
+    public function getValues(): array
     {
         return [];
     }

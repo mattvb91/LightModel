@@ -4,6 +4,10 @@
 namespace mattvb91\LightModel;
 
 use Exception;
+use mattvb91\LightModel\DB\Column;
+use mattvb91\LightModel\DB\DB;
+use mattvb91\LightModel\DB\Table;
+use mattvb91\LightModel\Exceptions\TableColumnMissing;
 use PDO;
 
 /**
@@ -14,10 +18,10 @@ abstract class LightModel
 {
 
     /**
-     * @var $connection PDO
+     * The unique identifier column for this table.
+     *
+     * @var string
      */
-    private static $connection;
-
     protected $keyName = 'id';
 
     protected $key;
@@ -31,16 +35,31 @@ abstract class LightModel
     protected $tableName;
 
     /**
-     * This is used for proper typecasting of columns.
-     *
-     * @var array
-     */
-    private static $tableColumns = [];
-
-    /**
      * @var array
      */
     private static $initOptions = [];
+
+    /**
+     * List of associated entities this item belongs to.
+     *
+     * @var array
+     */
+    private $_belongsTo = [];
+
+    /**
+     * List of items this item is associated with.
+     *
+     * @var array
+     */
+    private $_hasMany = [];
+
+    /**
+     * @return Table
+     */
+    public function getTable(): Table
+    {
+        return DB::getModelTable($this);
+    }
 
     /**
      * Typecast the models columns to the associated mysql data types.
@@ -54,15 +73,15 @@ abstract class LightModel
     {
         if (in_array(self::OPTIONS_TYPECAST, self::$initOptions))
         {
-            $model->describeTable();
-
-            foreach (self::$tableColumns[$model->getTableName()] as $column => $type)
+            foreach ($model->getTable()->getColumns() as $column)
             {
-                if (in_array($column, get_object_vars($model)))
+                /* @var $column Column */
+                if (in_array($column->getField(), get_object_vars($model)))
                 {
-                    if (strpos($type, 'int') !== false)
+                    if ($column->getType() === Column::TYPE_INT)
                     {
-                        settype($model->$column, 'int');
+                        $field = $column->getField();
+                        settype($model->$field, Column::TYPE_INT);
                     }
                 }
             }
@@ -77,41 +96,29 @@ abstract class LightModel
      *
      * @return array
      */
-    abstract public function getValues();
+    abstract public function getValues(): array;
 
 
     //Typecast model attributes to mysql data types
     const OPTIONS_TYPECAST = 1;
 
     /**
+     * Set up our options and pass PDO to our DB Singleton
+     *
      * @param PDO $pdo
      * @param array $options
      */
     public static function init(PDO $pdo, $options = [])
     {
-        self::$connection = $pdo;
+        DB::init($pdo);
         self::$initOptions = $options;
-    }
-
-    /**
-     * @return PDO
-     * @throws Exception
-     */
-    public static function getConnection()
-    {
-        if (! isset(self::$connection))
-        {
-            throw new Exception('LightModel::init() not called');
-        }
-
-        return self::$connection;
     }
 
     /**
      * Check if tableName has been set or return based on class;
      * @return String
      */
-    public function getTableName()
+    public function getTableName(): string
     {
         if ($this->tableName === null)
         {
@@ -122,9 +129,9 @@ abstract class LightModel
     }
 
     /**
-     * @return mixed
+     * @return string
      */
-    public function getKeyName()
+    public function getKeyName(): string
     {
         return $this->keyName;
     }
@@ -152,7 +159,7 @@ abstract class LightModel
      * @param $key
      * @return LightModel
      */
-    public static function getOneByKey($key)
+    public static function getOneByKey($key): ?LightModel
     {
         /* @var $class LightModel */
         $className = get_called_class();
@@ -160,7 +167,7 @@ abstract class LightModel
         $tableKey = $class->getKeyName();
 
         $sql = 'SELECT * FROM ' . $class->getTableName() . ' WHERE ' . $tableKey . ' = :key';
-        $query = self::getConnection()->prepare($sql);
+        $query = DB::getConnection()->prepare($sql);
         $query->execute(['key' => $key]);
 
         if ($res = $query->fetchObject($className))
@@ -171,13 +178,61 @@ abstract class LightModel
         return null;
     }
 
+    const FILTER_ORDER = 'order';
+    const FILTER_LIMIT = 'limit';
+
+
+    /**
+     * Parse filters & return the associated params for passing into PDO query
+     *
+     * @param String $sql
+     * @param $filter
+     * @param LightModel $class
+     * @return array
+     */
+    private static function handleFilter(String &$sql, $filter, LightModel $class): array
+    {
+        $params = [];
+
+        foreach ($filter as $filter => $value)
+        {
+            if (! $class->getTable()->hasColumn($filter))
+                continue;
+
+            //Default operator for all queries
+            $operator = '=';
+
+            //Check if the operator was passed in
+            if (is_array($value))
+            {
+                $operator = $value[0];
+                $value = $value[1];
+            }
+
+            switch ($class->getTable()->getColumn($filter)->getType())
+            {
+                case Column::TYPE_INT:
+                    $value = (int) $value;
+                    break;
+                default:
+                    $value = (string) $value;
+            }
+
+            $sql .= ' AND `' . $filter . '` ' . $operator . ' :' . $filter;
+            $params[':' . $filter] = $value;
+
+        }
+
+        return $params;
+    }
+
     /**
      * Get all items based on filter
      *
      * @param array $filter
      * @return array
      */
-    public static function getItems($filter = [])
+    public static function getItems($filter = []): array
     {
         $res = [];
 
@@ -185,8 +240,11 @@ abstract class LightModel
         $className = get_called_class();
         $class = new $className;
 
-        $sql = 'SELECT * FROM ' . $class->getTableName();
-        $query = self::getConnection()->query($sql);
+        $sql = 'SELECT * FROM ' . $class->getTableName() . ' WHERE 1=1';
+        $params = self::handleFilter($sql, $filter, $class);
+
+        $query = DB::getConnection()->prepare($sql);
+        $query->execute($params);
 
         foreach ($query->fetchAll(PDO::FETCH_CLASS, $className) as $item)
         {
@@ -203,15 +261,18 @@ abstract class LightModel
      * @param array $filter
      * @return int
      */
-    public static function count($filter = [])
+    public static function count($filter = []): int
     {
         /* @var $class LightModel */
         $className = get_called_class();
         $class = new $className;
         $tableKey = $class->getKeyName();
 
-        $sql = 'SELECT COUNT(' . $tableKey . ') FROM ' . $class->getTableName();
-        $query = self::getConnection()->query($sql);
+        $sql = 'SELECT COUNT(' . $tableKey . ') FROM ' . $class->getTableName() . ' WHERE 1=1';
+        $params = self::handleFilter($sql, $filter, $class);
+
+        $query = DB::getConnection()->prepare($sql);
+        $query->execute($params);
 
         return (int) $query->fetchColumn(0);
     }
@@ -222,7 +283,7 @@ abstract class LightModel
      *
      * @return bool
      */
-    public function exists()
+    public function exists(): bool
     {
         $tableKey = $this->getKeyName();
 
@@ -233,7 +294,7 @@ abstract class LightModel
         }
 
         $sql = 'SELECT EXISTS(SELECT ' . $tableKey . ' FROM ' . $this->getTableName() . ' WHERE ' . $this->getKeyName() . ' = :key LIMIT 1)';
-        $query = self::getConnection()->prepare($sql);
+        $query = DB::getConnection()->prepare($sql);
         $query->execute(['key' => $this->getKey()]);
 
         return boolval($query->fetchColumn(0));
@@ -278,67 +339,70 @@ abstract class LightModel
      *
      * @return bool
      */
-    public function save()
+    public function save(): bool
     {
-        $values = $this->getValues();
-        $keys = array_keys($values);
-
         if ($this->exists())
         {
-            $setString = '';
-            foreach ($values as $key => $value)
-            {
-                $setString .= '`' . $key . '`=:' . $key;
-
-                if (end($keys) !== $key)
-                {
-                    $setString .= ',';
-                }
-
-                unset($values[$key]);
-                $values[':' . $key] = $value;
-            }
-
-            $keyParam = ':' . $this->getKeyName();
-            $values[$keyParam] = $this->getKey();
-
-            $sql = 'UPDATE `' . $this->getTableName() . '` SET ' . $setString . ' WHERE `' . $this->getKeyName() . '` = ' . $keyParam . ';';
-        } else
-        {
-            $bindings = [
-                'columns' => '',
-                'values'  => '',
-            ];
-
-            foreach ($values as $key => $value)
-            {
-                $bindings['columns'] .= '`' . $key . '`';
-                $bindings['values'] .= ':' . $key . '';
-
-                if (end($keys) !== $key)
-                {
-                    $bindings['columns'] .= ',';
-                    $bindings['values'] .= ',';
-                }
-
-                //Update the values
-                unset($values[$key]);
-                $values[':' . $key] = $value;
-            }
-
-            $sql = 'INSERT INTO `' . $this->getTableName() . '` (' . $bindings['columns'] . ') VALUES (' . $bindings['values'] . ');';
+            return $this->update();
         }
 
-        $query = self::getConnection()->prepare($sql);
+        return $this->insert();
+    }
+
+
+    /**
+     * @return bool
+     */
+    private function insert(): bool
+    {
+        $columns = [];
+        $values = $this->getValues();
+
+        foreach ($values as $key => $value)
+        {
+            $columns[] = '`' . $key . '`';
+
+            //Update the values
+            unset($values[$key]);
+            $values[':' . $key] = $value;
+        }
+
+        $sql = 'INSERT INTO `' . $this->getTableName() . '` (' . implode(',', $columns) . ') VALUES (' . implode(',', array_keys($values)) . ');';
+        $query = DB::getConnection()->prepare($sql);
         $res = $query->execute($values);
 
         //If this was inserted successfully update the id
-        if (! $this->exists() && $res)
+        if ($res && $lastInsertId = DB::getConnection()->lastInsertId())
         {
-            $this->setKey(self::getConnection()->lastInsertId());
+            $this->setKey($lastInsertId);
         }
 
         return $res;
+    }
+
+    /**
+     * @return bool
+     */
+    private function update(): bool
+    {
+        $values = $this->getValues();
+        $bindings = [];
+
+        foreach ($values as $key => $value)
+        {
+            $bindings[] = '`' . $key . '`=:' . $key;
+
+            unset($values[$key]);
+            $values[':' . $key] = $value;
+        }
+
+        $keyParam = ':' . $this->getKeyName();
+        $values[$keyParam] = $this->getKey();
+
+        $sql = 'UPDATE `' . $this->getTableName() . '` SET ' . implode(',', $bindings) . ' WHERE `' . $this->getKeyName() . '` = ' . $keyParam . ';';
+        $query = DB::getConnection()->prepare($sql);
+
+        return $query->execute($values);
     }
 
     /**
@@ -346,7 +410,7 @@ abstract class LightModel
      *
      * @return bool
      */
-    public function delete()
+    public function delete(): bool
     {
         if (! $this->exists())
         {
@@ -354,32 +418,10 @@ abstract class LightModel
         }
 
         $sql = 'DELETE FROM ' . $this->getTableName() . ' WHERE ' . $this->getKeyName() . ' = :key';
-        $query = self::getConnection()->prepare($sql);
+        $query = DB::getConnection()->prepare($sql);
 
         return $query->execute(['key' => $this->getKey()]);
     }
-
-    /**
-     * Describe the associated table columns and set up our
-     * $tableColumns
-     */
-    private function describeTable()
-    {
-        if (! isset(self::$tableColumns[$this->getTableName()]))
-        {
-            $sql = 'DESCRIBE ' . $this->getTableName();
-            $query = self::getConnection()->prepare($sql);
-            $query->execute();
-
-            foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $values)
-            {
-                self::$tableColumns[$this->getTableName()][$values['Field']] = $values['Type'];
-            }
-        }
-    }
-
-    private $_belongsTo = [];
-    private $_hasMany = [];
 
     /**
      * Load the specified belongsTo relation model.
@@ -389,18 +431,39 @@ abstract class LightModel
      * @return LightModel
      * @throws Exception
      */
-    protected function belongsTo($class, $foreignKey)
+    protected function belongsTo($class, $foreignKey): ?LightModel
     {
-        if (! property_exists($this, $foreignKey))
+        $identifier = implode('_', [$class, $foreignKey]);
+
+        if (! isset($this->_belongsTo[$identifier]))
         {
-            throw new Exception($class . ' does not have attribute: ' . $foreignKey);
+            if (! $this->getTable()->hasColumn($foreignKey))
+            {
+                throw new TableColumnMissing($this->getTableName() . ' does not have column: ' . $foreignKey);
+            }
+
+            $this->_belongsTo[$identifier] = $class::getOneByKey($this->$foreignKey);
         }
 
-        if (! isset($this->_belongsTo[$class]))
+        return $this->_belongsTo[$identifier];
+    }
+
+    /**
+     * @param $class
+     * @param $foreignKey
+     * @return array
+     * @throws Exception
+     */
+    protected function hasMany($class, $foreignKey): array
+    {
+        /* @var $class LightModel */
+        $class = new $class;
+
+        if (! $class->getTable()->hasColumn($foreignKey))
         {
-            $this->_belongsTo[$class] = $class::getOneByKey($this->$foreignKey);
+            throw new TableColumnMissing($class->getTableName() . ' does not have column: ' . $foreignKey);
         }
 
-        return $this->_belongsTo[$class];
+        return $class::getItems([$foreignKey => $this->getKey()]);
     }
 }

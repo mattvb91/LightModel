@@ -164,3 +164,36 @@ public function department()
 }
 
 ```
+
+## Fetching multiple rows
+
+To fetch multiple rows simply use the ```static::getItems()``` method.
+
+```php
+$users = User::getItems();
+```
+
+### Filtering
+
+You can also filter data sets by passing an optional array int the ```static::getItems()```
+method. You must pass the correct table column name.
+
+```php
+$filter = [
+    'username' => 'joe'
+];
+
+$allJoeUsers = User::getItems($filter);
+
+```
+
+Optionally you can also pass in the operator you want to perform. 
+The order MUST be Table_Column => ['Operator', 'Value']
+```php
+$filter = [
+    'username' => ['>=', 'joe']
+];
+
+$allJoeUsers = User::getItems($filter);
+
+```

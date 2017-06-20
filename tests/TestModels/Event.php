@@ -24,9 +24,9 @@ class Event extends LightModel
      * Maps DB Columns (keys) to the associated values.
      * [ db_column => value ]
      *
-     * @return arrayF
+     * @return array
      */
-    public function getValues()
+    public function getValues(): array
     {
         return [
             'event_id'    => $this->getKey(),

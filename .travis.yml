@@ -14,3 +14,9 @@ before_install:
 before_script:
   - mysql < $TRAVIS_BUILD_DIR/tests/scripts/dump.sql
   - composer install
+
+script:
+- $TRAVIS_BUILD_DIR/vendor/bin/phpunit --coverage-clover ./tests/logs/clover.xml
+
+after_script:
+- php $TRAVIS_BUILD_DIR/vendor/bin/coveralls -v

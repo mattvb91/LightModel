@@ -1,6 +1,7 @@
 <p align="center"><b>LightModel</b></p>
 
 <p align="center">
+  <img src='https://coveralls.io/repos/github/mattvb91/LightModel/badge.svg?branch=master'/>
   <img src="https://travis-ci.org/mattvb91/LightModel.svg?branch=master">
   <img class="latest_stable_version_img" src="https://poser.pugx.org/mattvb91/lightmodel/v/stable">
   <img class="total_img" src="https://poser.pugx.org/mattvb91/lightmodel/downloads">

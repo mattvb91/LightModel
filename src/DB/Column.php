@@ -15,14 +15,29 @@ class Column
     const TYPE_VARCHAR = 'varchar';
     const TYPE_INT = 'int';
 
+    /**
+     * @var string
+     */
     private $field;
 
+    /**
+     * @var string
+     */
     private $type = self::TYPE_VARCHAR;
 
+    /**
+     * @var bool
+     */
     private $null = true;
 
+    /**
+     * @var mixed
+     */
     private $default;
 
+    /**
+     * @var mixed
+     */
     private $extra;
 
     /**

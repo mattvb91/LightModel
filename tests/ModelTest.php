@@ -3,7 +3,7 @@
 namespace mattvb91\LightModel\Tests;
 
 use mattvb91\LightModel\DB\DB;
-use mattvb91\LightModel\Exceptions\TableColumnMissing;
+use mattvb91\LightModel\Exceptions\ColumnMissingException;
 use mattvb91\LightModel\LightModel;
 use mattvb91\LightModel\Tests\TestModels\Book;
 use mattvb91\LightModel\Tests\TestModels\Event;
@@ -239,7 +239,7 @@ class ModelTest extends TestCase
 
         $this->assertInstanceOf(User::class, $book->user());
 
-        $this->expectException(TableColumnMissing::class);
+        $this->expectException(ColumnMissingException::class);
         $this->expectExceptionMessage('books does not have column: wrong');
         $book->wrongForeignKey();
     }
@@ -273,10 +273,30 @@ class ModelTest extends TestCase
 
         $users = User::getItems(['username' => 123]);
         $this->assertEquals(count($users), User::count(['username' => 123]));
-
         $this->assertEquals(1, count(User::getItems(['username' => 123])));
-
         $this->assertGreaterThan(1, count(User::getItems(['username' => ['>=', 12]])));
+        $this->assertEquals(1, count(User::getItems([LightModel::FILTER_LIMIT => 1])));
+
+        $users = User::getItems([LightModel::FILTER_ORDER => 'id DESC']);
+        $this->assertGreaterThan($users[1]->getKey(), $users[0]->getKey());
+    }
+
+    /**
+     * Test get keys
+     */
+    public function testKeys()
+    {
+        LightModel::init(self::$pdo, [LightModel::OPTIONS_TYPECAST]);
+
+        $userKeys = User::getKeys();
+        foreach ($userKeys as $key)
+        {
+            $user = User::getOneByKey($key);
+            $this->assertNotNull($userKeys);
+            $this->assertTrue($user->exists());
+        }
+
+        $this->assertEquals(count($userKeys), User::count());
     }
 
     public function testHasMany()

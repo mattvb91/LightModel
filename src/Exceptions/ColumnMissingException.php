@@ -5,10 +5,10 @@ namespace mattvb91\LightModel\Exceptions;
 use Exception;
 
 /**
- * Class TableColumnMissing
+ * Class ColumnMissingException
  * @package mattvb91\LightModel\Exceptions
  */
-class TableColumnMissing extends Exception
+class ColumnMissingException extends Exception
 {
 
 }

@@ -80,4 +80,12 @@ class Table
 
         return $this->columns[$column];
     }
+
+    /**
+     * @return String
+     */
+    public function getName()
+    {
+        return $this->name;
+    }
 }

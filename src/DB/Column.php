@@ -14,6 +14,16 @@ class Column
 
     const TYPE_VARCHAR = 'varchar';
     const TYPE_INT = 'int';
+    const TYPE_TINYINT = 'tinyint';
+    const TYPE_DOUBLE = 'double';
+    const TYPE_TIMESTAMP = 'timestamp';
+    const TYPE_DATETIME = 'datetime';
+    const TYPE_CHAR = 'char';
+    const TYPE_TEXT = 'text';
+    const TYPE_FLOAT = 'float';
+    const TYPE_DATE = 'date';
+    const TYPE_BLOB = 'blob';
+    const TYPE_ENUM = 'enum';
 
     /**
      * @var string
@@ -59,6 +69,36 @@ class Column
 
         if (strpos($description, self::TYPE_VARCHAR) !== false)
             return self::TYPE_VARCHAR;
+
+        if (strpos($description, self::TYPE_TINYINT) !== false)
+            return self::TYPE_TINYINT;
+
+        if (strpos($description, self::TYPE_CHAR) !== false)
+            return self::TYPE_CHAR;
+
+        if (strpos($description, self::TYPE_TIMESTAMP) !== false)
+            return self::TYPE_TIMESTAMP;
+
+        if (strpos($description, self::TYPE_DATETIME) !== false)
+            return self::TYPE_DATETIME;
+
+        if (strpos($description, self::TYPE_TEXT) !== false)
+            return self::TYPE_TEXT;
+
+        if (strpos($description, self::TYPE_DOUBLE) !== false)
+            return self::TYPE_DOUBLE;
+
+        if (strpos($description, self::TYPE_FLOAT) !== false)
+            return self::TYPE_FLOAT;
+
+        if (strpos($description, self::TYPE_DATE) !== false)
+            return self::TYPE_DATE;
+
+        if (strpos($description, self::TYPE_BLOB) !== false)
+            return self::TYPE_BLOB;
+
+        if (strpos($description, self::TYPE_ENUM) !== false)
+            return self::TYPE_ENUM;
     }
 
     /**

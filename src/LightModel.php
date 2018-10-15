@@ -7,7 +7,7 @@ use Exception;
 use mattvb91\LightModel\DB\Column;
 use mattvb91\LightModel\DB\DB;
 use mattvb91\LightModel\DB\Table;
-use mattvb91\LightModel\Exceptions\TableColumnMissing;
+use mattvb91\LightModel\Exceptions\ColumnMissingException;
 use PDO;
 
 /**
@@ -24,6 +24,11 @@ abstract class LightModel
      */
     protected $keyName = 'id';
 
+    /**
+     * The unique identifier.
+     *
+     * @var int|string
+     */
     protected $key;
 
     /**
@@ -194,6 +199,18 @@ abstract class LightModel
     {
         $params = [];
 
+        if (isset($filter[self::FILTER_ORDER]))
+        {
+            $order = $filter[self::FILTER_ORDER];
+            unset($filter[self::FILTER_ORDER]);
+        }
+
+        if (isset($filter[self::FILTER_LIMIT]))
+        {
+            $limit = (int) $filter[self::FILTER_LIMIT];
+            unset($filter[self::FILTER_LIMIT]);
+        }
+
         foreach ($filter as $filter => $value)
         {
             if (! $class->getTable()->hasColumn($filter))
@@ -220,7 +237,16 @@ abstract class LightModel
 
             $sql .= ' AND `' . $filter . '` ' . $operator . ' :' . $filter;
             $params[':' . $filter] = $value;
+        }
 
+        if (isset($order))
+        {
+            $sql .= ' ORDER BY ' . $order;
+        }
+
+        if (isset($limit))
+        {
+            $sql .= ' LIMIT ' . $limit;
         }
 
         return $params;
@@ -254,6 +280,35 @@ abstract class LightModel
         return $res;
     }
 
+    /**
+     * Get array of keys that match the specified filters.
+     * Can be used when loading large quantities of models is not an option.
+     *
+     * @param array $filter
+     * @return array
+     */
+    public static function getKeys($filter = []): array
+    {
+        /* @var $class LightModel */
+        $className = get_called_class();
+        $class = new $className;
+        $tableKey = $class->getKeyName();
+
+        $sql = 'SELECT ' . $tableKey . ' FROM ' . $class->getTableName() . ' WHERE 1=1';
+        $params = self::handleFilter($sql, $filter, $class);
+
+        $query = DB::getConnection()->prepare($sql);
+        $query->execute($params);
+
+        $res = [];
+
+        foreach ($query->fetchAll() as $key => $value)
+        {
+            $res[] = $value[0];
+        }
+
+        return $res;
+    }
 
     /**
      * Count items based on filter
@@ -439,7 +494,7 @@ abstract class LightModel
         {
             if (! $this->getTable()->hasColumn($foreignKey))
             {
-                throw new TableColumnMissing($this->getTableName() . ' does not have column: ' . $foreignKey);
+                throw new ColumnMissingException($this->getTableName() . ' does not have column: ' . $foreignKey);
             }
 
             $this->_belongsTo[$identifier] = $class::getOneByKey($this->$foreignKey);
@@ -461,9 +516,33 @@ abstract class LightModel
 
         if (! $class->getTable()->hasColumn($foreignKey))
         {
-            throw new TableColumnMissing($class->getTableName() . ' does not have column: ' . $foreignKey);
+            throw new ColumnMissingException($class->getTableName() . ' does not have column: ' . $foreignKey);
         }
 
         return $class::getItems([$foreignKey => $this->getKey()]);
+    }
+
+    /**
+     * @return bool
+     */
+    public function preInsert(): bool
+    {
+        return true;
+    }
+
+    /**
+     * @return bool
+     */
+    public function postInsert(): bool
+    {
+        return true;
+    }
+
+    /**
+     * @return bool
+     */
+    public function postUpdate(): bool
+    {
+        return true;
     }
 }

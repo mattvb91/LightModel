@@ -174,7 +174,7 @@ To fetch multiple rows simply use the ```static::getItems()``` method.
 $users = User::getItems();
 ```
 
-### Filtering
+## Filtering
 
 You can also filter data sets by passing an optional array int the ```static::getItems()```
 method. You must pass the correct table column name.
@@ -197,4 +197,41 @@ $filter = [
 
 $allJoeUsers = User::getItems($filter);
 
+```
+
+To set the order or limit the results returned you can make use of the
+```LightModel::FILTER_ORDER``` and ```LightModel::FILTER_LIMIT``` constants
+and pass them in your options array:
+
+```php
+$filter = [
+    LightModel::FILTER_ORDER => 'id DESC',
+    LightModel::FILTER_LIMIT => 100;
+];
+
+$filteredUsers = User::getItems($filter);
+```
+
+## Fetching keys
+
+You may sometimes run into situations where performing a ```static::getItems()``` brings back
+too large of a resultset. You can instead perform the same filters using ```static::getKeys()``` which
+instead of returning an array of fully loaded Models it will now only return the unique column ID's that fit your
+filtered criteria. You can then use that ID to individually load the full model manually:
+
+```php
+
+$filter = [
+    LightModel::FILTER_ORDER => 'id DESC',
+];
+
+$userKeys = User::getKeys($filter);
+//We now have an array consisting of all the primary keys that
+//match our criteria
+
+foreach($userKeys as $primaryKey) 
+{
+    //Load the full individual record for further processing
+    $user = User::getOneByKey($primaryKey);
+}
 ```

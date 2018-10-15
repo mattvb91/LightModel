@@ -3,7 +3,7 @@
 
 namespace mattvb91\LightModel\DB;
 
-use mattvb91\LightModel\Exceptions\TableColumnMissing;
+use mattvb91\LightModel\Exceptions\ColumnMissingException;
 use PDO;
 
 /**
@@ -71,13 +71,21 @@ class Table
     /**
      * @param string $column
      * @return Column
-     * @throws TableColumnMissing
+     * @throws ColumnMissingException
      */
     public function getColumn(string $column): Column
     {
         if (! $this->hasColumn($column))
-            throw new TableColumnMissing();
+            throw new ColumnMissingException();
 
         return $this->columns[$column];
+    }
+
+    /**
+     * @return String
+     */
+    public function getName()
+    {
+        return $this->name;
     }
 }

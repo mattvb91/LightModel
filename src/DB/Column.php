@@ -25,6 +25,21 @@ class Column
     const TYPE_BLOB = 'blob';
     const TYPE_ENUM = 'enum';
 
+    private static $_types = [
+        self::TYPE_VARCHAR,
+        self::TYPE_INT,
+        self::TYPE_TINYINT,
+        self::TYPE_DOUBLE,
+        self::TYPE_TIMESTAMP,
+        self::TYPE_DATETIME,
+        self::TYPE_CHAR,
+        self::TYPE_TEXT,
+        self::TYPE_FLOAT,
+        self::TYPE_DATE,
+        self::TYPE_BLOB,
+        self::TYPE_ENUM,
+    ];
+
     /**
      * @var string
      */
@@ -62,43 +77,16 @@ class Column
         $this->default = $values['Default'];
     }
 
-    private static function getTypeFromDescription($description)
+    /**
+     * @param string $description
+     * @return mixed
+     */
+    private static function getTypeFromDescription(string $description)
     {
-        if (strpos($description, self::TYPE_INT) !== false)
-            return self::TYPE_INT;
-
-        if (strpos($description, self::TYPE_VARCHAR) !== false)
-            return self::TYPE_VARCHAR;
-
-        if (strpos($description, self::TYPE_TINYINT) !== false)
-            return self::TYPE_TINYINT;
-
-        if (strpos($description, self::TYPE_CHAR) !== false)
-            return self::TYPE_CHAR;
-
-        if (strpos($description, self::TYPE_TIMESTAMP) !== false)
-            return self::TYPE_TIMESTAMP;
-
-        if (strpos($description, self::TYPE_DATETIME) !== false)
-            return self::TYPE_DATETIME;
-
-        if (strpos($description, self::TYPE_TEXT) !== false)
-            return self::TYPE_TEXT;
-
-        if (strpos($description, self::TYPE_DOUBLE) !== false)
-            return self::TYPE_DOUBLE;
-
-        if (strpos($description, self::TYPE_FLOAT) !== false)
-            return self::TYPE_FLOAT;
-
-        if (strpos($description, self::TYPE_DATE) !== false)
-            return self::TYPE_DATE;
-
-        if (strpos($description, self::TYPE_BLOB) !== false)
-            return self::TYPE_BLOB;
-
-        if (strpos($description, self::TYPE_ENUM) !== false)
-            return self::TYPE_ENUM;
+        foreach (self::$_types as $type) {
+            if (strpos($description, $type) !== false)
+                return $type;
+        }
     }
 
     /**
